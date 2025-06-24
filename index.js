@@ -14,7 +14,7 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // Firebase Admin SDK Initialization
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
