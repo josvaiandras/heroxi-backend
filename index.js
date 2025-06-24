@@ -57,6 +57,20 @@ Simulate a football match between Team A (Formation: ${formationA}, Lineup: ${li
 Generate a brief match summary in 3 paragraphs:
 1. Brief pre-match analysis of strengths/weaknesses.
 2. Minute-by-minute highlights with goal scorers and key events.
+3. Final score, winner', and a witty football remark.
+
+Keep it under 200 words. Return plain text only.
+  `.trim();
+}
+
+// 🏟️ Single Match Simulation Prompt Builder
+function buildSingleMatchSimulationPrompt(englandLineup, opponentName, formation) {
+  return `
+Simulate a football match between England (Formation: ${formation}, Lineup: ${englandLineup}) and ${opponentName} (Formation: 4-3-3, Lineup: Generic ${opponentName} XI).
+
+Generate a brief match summary in 3 paragraphs:
+1. Brief pre-match analysis of strengths/weaknesses.
+2. Minute-by-minute highlights with goal scorers and key events.
 3. Final score, winner, and a witty football remark.
 
 Keep it under 200 words. Return plain text only.
@@ -107,7 +121,39 @@ app.post("/rate-my-xi", async (req, res) => {
   }
 });
 
-// Endpoint for Match Simulation
+// Endpoint for Single-Player Match Simulation
+app.post("/simulate-single-match", async (req, res) => {
+  try {
+    const { englandLineup, opponentName } = req.body;
+    if (!englandLineup || !opponentName) {
+      return res.status(400).json({ error: "England lineup and opponent name are required." });
+    }
+
+    // Extract formation from englandLineup (e.g., "Here's my XI in a 4-4-2 setup:")
+    const formationMatch = englandLineup.match(/in a (\d-\d-\d) setup:/);
+    const formation = formationMatch ? formationMatch[1] : "4-4-2"; // Default to 4-4-2 if not found
+
+    const useMock = true;
+    if (useMock) {
+      const mockResult = `Mock simulation: England (${formation}) vs. ${opponentName} (4-3-3). England started with high pressing, exploiting ${opponentName}'s weak flanks. ${opponentName} countered with quick transitions. In the 20th minute, an England striker scored from a set-piece. ${opponentName} equalized in the 55th minute via a penalty. A late England goal in the 85th minute sealed it. Final score: 2-1 to England. Looks like ${opponentName}'s defense forgot their boots today! ⚽`;
+      return res.json({ result: mockResult });
+    }
+
+    const prompt = buildSingleMatchSimulationPrompt(englandLineup, opponentName, formation);
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const text = response.choices[0].message.content;
+    res.json({ result: text });
+  } catch (error) {
+    console.error("Error simulating single match:", error);
+    res.status(500).json({ error: "Failed to simulate match." });
+  }
+});
+
+// Endpoint for Multiplayer Match Simulation
 app.post("/simulate-match", async (req, res) => {
   try {
     const { matchId } = req.body;
