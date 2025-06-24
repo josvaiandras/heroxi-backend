@@ -14,7 +14,15 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // Firebase Admin SDK Initialization
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+let serviceAccount;
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  // Render environment
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else {
+  // Local environment
+  serviceAccount = JSON.parse(fs.readFileSync('serviceAccountKey.json', 'utf8'));
+}
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
@@ -110,7 +118,7 @@ app.post("/simulate-match", async (req, res) => {
     const matchRef = db.collection('matches').doc(matchId);
     const matchSnap = await matchRef.get();
 
-    if (!matchSnap.exists()) {
+    if (!matchSnap.exists) {
       return res.status(404).json({ error: "Match not found." });
     }
 
@@ -222,7 +230,7 @@ app.get('/get-team/:userId', async (req, res) => {
     const teamRef = db.collection('teams').doc(userId);
     const docSnap = await teamRef.get();
 
-    if (docSnap.exists()) {
+    if (docSnap.exists) {
       res.status(200).json(docSnap.data());
     } else {
       res.status(404).json({ error: "Team not found for this user." });
