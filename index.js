@@ -87,6 +87,22 @@ Provide a fun, insightful summary of their managerial style, strengths, and quir
   `.trim();
 }
 
+// 💡 Team Insight Prompt Builder
+function buildTeamInsightPrompt(lineupText) {
+  return `
+Analyze this football team for key insights:
+${lineupText}
+
+Provide a concise analysis covering:
+1.  **Pace:** The overall speed of the team.
+2.  **Power:** The physical strength and presence.
+3.  **Playmaking:** The creative and passing ability.
+4.  **Key Player:** Identify one player who would be most crucial for this team's success and briefly explain why.
+
+Keep the analysis under 150 words and present it in a clear, insightful manner.
+  `.trim();
+}
+
 // Endpoint for Team Rating
 app.post("/rate-my-xi", async (req, res) => {
   try {
@@ -224,6 +240,37 @@ app.post("/personality-test", async (req, res) => {
     res.status(500).json({ error: "Failed to perform personality test." });
   }
 });
+
+// Endpoint for Team Insight
+app.post("/team-insight", async (req, res) => {
+  try {
+    const { lineupText } = req.body;
+    if (!lineupText) {
+      return res.status(400).json({ error: "Lineup text is required." });
+    }
+
+    const useMock = true; // For now, we use a mock response
+    if (useMock) {
+      const mockInsight = "This team boasts impressive pace on the wings and solid power in defense. Playmaking seems centered in the midfield, with a key player likely being the central midfielder who can dictate tempo. Overall, a balanced squad, but could be vulnerable to quick counter-attacks if the midfield press is broken.";
+      return res.json({ insight: mockInsight });
+    }
+
+    // This part would be used with a real API call
+    const prompt = buildTeamInsightPrompt(lineupText);
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const text = response.choices[0].message.content;
+    res.json({ insight: text });
+
+  } catch (error) {
+    console.error("Error in team insight:", error);
+    res.status(500).json({ error: "Failed to perform team insight." });
+  }
+});
+
 
 // Endpoint for Daily Challenge
 app.post("/daily-challenge", async (req, res) => {
