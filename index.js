@@ -52,54 +52,46 @@ Rate the team objectively from -3 to 10 (negatives allowed). Start with the rati
 // 🏟️ Match Simulation Prompt Builder
 function buildMatchSimulationPrompt(teamA, teamB, formationA, formationB, lineupA, lineupB) {
   return `
-Simulate a football match between Team A (Formation: ${formationA}, Lineup: ${lineupA}) and Team B (Formation: ${formationB}, Lineup: ${lineupB}).
-
-Generate a brief match summary in 3 paragraphs:
-1. Brief pre-match analysis of strengths/weaknesses.
-2. Minute-by-minute highlights with goal scorers and key events.
-3. Final score, winner', and a witty football remark.
-
-Keep it under 200 words. Return plain text only.
+Simulate a football match between two fictional teams based on the following:
+Team A: Formation: ${formationA}, Lineup: ${lineupA}
+Team B: Formation: ${formationB}, Lineup: ${lineupB}
+Generate a 3-paragraph match report (max 200 words total):
+At the very start of the pre-match analysis, name both teams with creative, realistic names. Clearly state that Team A is the match initiator who issued the challenge or hosted the match. Then describe both teams’ strengths and weaknesses.
+Minute-by-minute highlights including goal scorers, key moments, and drama.
+Final score, winning team, and a witty football-style closing remark.
+Return plain text only in a style like a professional sports journalist summarizing the match.
   `.trim();
 }
 
 // 🏟️ Single Match Simulation Prompt Builder
 function buildSingleMatchSimulationPrompt(englandLineup, opponentName, formation) {
   return `
-Simulate a football match between England (Formation: ${formation}, Lineup: ${englandLineup}) and ${opponentName} (Formation: 4-3-3, Lineup: Generic ${opponentName} XI).
-
-Generate a brief match summary in 3 paragraphs:
-1. Brief pre-match analysis of strengths/weaknesses.
-2. Minute-by-minute highlights with goal scorers and key events.
-3. Final score, winner, and a witty football remark.
-
-Keep it under 200 words. Return plain text only.
+Simulate a football match between England (Formation: ${formation}, Lineup: ${englandLineup}) and an opponent named ${opponentName}.
+Write a concise 3-paragraph match summary (max 200 words total):
+Pre-match analysis highlighting the strengths and weaknesses of both teams.
+Minute-by-minute highlights including goal scorers and key events.
+Final score, the winner, and a witty football-related closing remark.
+Return plain text only.
   `.trim();
 }
 
 // 👤 Personality Test Prompt Builder
 function buildPersonalityTestPrompt(lineupText) {
   return `
-Analyze the personality traits of a football manager who would select the following XI and formation:
+You are a professional psychologist. Analyze the personality traits of a football manager who would select the following starting XI and formation:
 ${lineupText}
+Provide an insightful summary of their personality, strengths, and quirks. Keep your response under 150 words.
 
-Provide a fun, insightful summary of their managerial style, strengths, and quirks. Keep it under 150 words.
+
   `.trim();
 }
 
 // 💡 Team Insight Prompt Builder
 function buildTeamInsightPrompt(lineupText) {
   return `
-Analyze this football team for key insights:
+Analyze the following football team and provide as many fun and interesting facts as possible about the players:
 ${lineupText}
-
-Provide a concise analysis covering:
-1.  **Pace:** The overall speed of the team.
-2.  **Power:** The physical strength and presence.
-3.  **Playmaking:** The creative and passing ability.
-4.  **Key Player:** Identify one player who would be most crucial for this team's success and briefly explain why.
-
-Keep the analysis under 150 words and present it in a clear, insightful manner.
+Keep the response concise (under 150 words) and focus on entertaining or surprising trivia, achievements, nicknames, unique skills, or memorable moments related to the players.
   `.trim();
 }
 
@@ -151,7 +143,7 @@ app.post("/simulate-single-match", async (req, res) => {
 
     const useMock = true;
     if (useMock) {
-      const mockResult = `Mock simulation: England (${formation}) vs. ${opponentName} (4-3-3). England started with high pressing, exploiting ${opponentName}'s weak flanks. ${opponentName} countered with quick transitions. In the 20th minute, an England striker scored from a set-piece. ${opponentName} equalized in the 55th minute via a penalty. A late England goal in the 85th minute sealed it. Final score: 2-1 to England. Looks like ${opponentName}'s defense forgot their boots today! ⚽`;
+      const mockResult = `Mock simulation: England (${formation}) vs. ${opponentName}. England started with high pressing, exploiting ${opponentName}'s weak flanks. ${opponentName} countered with quick transitions. In the 20th minute, an England striker scored from a set-piece. ${opponentName} equalized in the 55th minute via a penalty. A late England goal in the 85th minute sealed it. Final score: 2-1 to England. Looks like ${opponentName}'s defense forgot their boots today! ⚽`;
       return res.json({ result: mockResult });
     }
 
