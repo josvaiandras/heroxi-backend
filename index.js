@@ -45,7 +45,10 @@ function buildPrompt(lineupText) {
 I've got this football XI with formation and roles:
 ${lineupText}
 
-Rate the team objectively from -3 to 10 (negatives allowed). Start with the rating, then briefly analyze player fit, tactical fit, strengths, weaknesses, and key tactical observations. Use an analytical tone, and add a light football joke or witty comment if it fits naturally. Limit to about 150 words.
+Please rate the team objectively on a scale from -3 to 10 (negative scores allowed). Start your response with the rating on the first line in this exact format:
+Rating: <score>
+Then, provide a concise analysis (around 150 words) covering player fit, tactical fit, strengths, weaknesses, and key tactical observations. Use an analytical and professional tone, and if appropriate, include a light, relevant football joke or witty comment to add some personality.
+
   `.trim();
 }
 
@@ -81,7 +84,7 @@ function buildPersonalityTestPrompt(lineupText) {
 You are a professional psychologist. Analyze the personality traits of a football manager who would select the following starting XI and formation:
 ${lineupText}
 Provide an insightful summary of their personality, strengths, and quirks. Keep your response under 150 words.
-
+Start your response with Personality Analysis: , in the first line. 
 
   `.trim();
 }
