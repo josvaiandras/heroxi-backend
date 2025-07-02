@@ -5,9 +5,11 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const { OpenAI } = require("openai");
 const admin = require('firebase-admin');
+const rateLimiter = require('./rateLimiter'); 
 
 const app = express();
 const port = process.env.PORT || 3000;
+
 
 // Middleware
 app.use(cors());
