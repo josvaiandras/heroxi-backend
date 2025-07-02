@@ -4,8 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const { OpenAI } = require("openai");
-const admin = require('firebase-admin');
-const rateLimiter = require('./rateLimiter'); 
+const admin = require('firebase-admin'); 
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -30,6 +29,8 @@ admin.initializeApp({
 });
 
 const db = admin.firestore();
+
+const rateLimiter = require('./rateLimiter');
 
 // Set up OpenAI client
 const openai = new OpenAI({
@@ -279,7 +280,7 @@ app.post("/daily-challenge", async (req, res) => {
 
     const useMock = true;
     if (useMock) {
-      const mockChallengeResult = "Congratulations1010! You've completed today's challenge with your selected XI. Your team shows great potential for teamwork and strategy. Keep up the good work!";
+      const mockChallengeResult = "Congratulations! You've completed today's challenge with your selected XI. Your team shows great potential for teamwork and strategy. Keep up the good work!";
       return res.json({ challengeResult: mockChallengeResult });
     }
 
