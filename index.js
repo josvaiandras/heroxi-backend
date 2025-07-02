@@ -109,7 +109,7 @@ app.post("/rate-my-xi", rateLimiter, async (req, res) => {
       return res.status(400).json({ error: "Lineup text is required." });
     }
 
-    const useMock = true;
+    const useMock = false;
     if (useMock) {
       return res.json({
         rating: 8.5,
@@ -147,7 +147,7 @@ app.post("/simulate-single-match", rateLimiter, async (req, res) => {
     const formationMatch = englandLineup.match(/in a (\d-\d-\d) setup:/);
     const formation = formationMatch ? formationMatch[1] : "4-4-2"; // Default to 4-4-2 if not found
 
-    const useMock = true;
+    const useMock = false;
     if (useMock) {
       const mockResult = `Mock simulation: England (${formation}) vs. ${opponentName}. England started with high pressing, exploiting ${opponentName}'s weak flanks. ${opponentName} countered with quick transitions. In the 20th minute, an England striker scored from a set-piece. ${opponentName} equalized in the 55th minute via a penalty. A late England goal in the 85th minute sealed it. Final score: 2-1 to England. Looks like ${opponentName}'s defense forgot their boots today! ⚽`;
       return res.json({ result: mockResult });
@@ -187,7 +187,7 @@ app.post("/simulate-match", rateLimiter, async (req, res) => {
       return res.status(400).json({ error: "Match is incomplete. Both teams and formations are required." });
     }
 
-    const useMock = true;
+    const useMock = false;
     if (useMock) {
       const mockResult = `Mock simulation: Team A (${matchData.formationA}) vs. Team B (${matchData.formationB}). Team A started strong, exploiting the wings. Team B countered with a solid midfield press. In the 15th minute, a Team A striker scored from a cross. Team B equalized in the 60th minute with a long-range shot. The match ended 1-1, with both teams showing grit. Looks like the only winner here is the popcorn vendor! 🍿`;
       return res.json({ result: mockResult });
@@ -219,7 +219,7 @@ app.post("/personality-test", rateLimiter, async (req, res) => {
       return res.status(400).json({ error: "Lineup text is required." });
     }
 
-    const useMock = true;
+    const useMock = false
     if (useMock) {
       const mockAnalysis = "Based on your England XI selection, you exhibit a strategic mindset with a preference for balanced gameplay. Your choices suggest you're a team player who values both defensive stability and creative attacking options. You likely approach challenges methodically but aren't afraid to take calculated risks.";
       return res.json({ analysis: mockAnalysis });
@@ -247,7 +247,7 @@ app.post("/team-insight", rateLimiter, async (req, res) => {
       return res.status(400).json({ error: "Lineup text is required." });
     }
 
-    const useMock = true; // For now, we use a mock response
+    const useMock = false; // For now, we use a mock response
     if (useMock) {
       const mockInsight = "This team boasts impressive pace on the wings and solid power in defense. Playmaking seems centered in the midfield, with a key player likely being the central midfielder who can dictate tempo. Overall, a balanced squad, but could be vulnerable to quick counter-attacks if the midfield press is broken.";
       return res.json({ insight: mockInsight });
@@ -278,7 +278,7 @@ app.post("/daily-challenge", async (req, res) => {
       return res.status(400).json({ error: "Lineup text is required." });
     }
 
-    const useMock = true;
+    const useMock = false;
     if (useMock) {
       const mockChallengeResult = "Congratulations! You've completed today's challenge with your selected XI. Your team shows great potential for teamwork and strategy. Keep up the good work!";
       return res.json({ challengeResult: mockChallengeResult });
