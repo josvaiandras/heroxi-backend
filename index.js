@@ -99,7 +99,7 @@ Keep the response concise (under 150 words) and focus on entertaining or surpris
 }
 
 // Endpoint for Team Rating
-app.post("/rate-my-xi", async (req, res) => {
+app.post("/rate-my-xi", rateLimiter, async (req, res) => {
   try {
     const { lineupText } = req.body;
     if (!lineupText) {
@@ -133,7 +133,7 @@ app.post("/rate-my-xi", async (req, res) => {
 });
 
 // Endpoint for Single-Player Match Simulation
-app.post("/simulate-single-match", async (req, res) => {
+app.post("/simulate-single-match", rateLimiter, async (req, res) => {
   try {
     const { englandLineup, opponentName } = req.body;
     if (!englandLineup || !opponentName) {
@@ -165,7 +165,7 @@ app.post("/simulate-single-match", async (req, res) => {
 });
 
 // Endpoint for Multiplayer Match Simulation
-app.post("/simulate-match", async (req, res) => {
+app.post("/simulate-match", rateLimiter, async (req, res) => {
   try {
     const { matchId } = req.body;
     if (!matchId) {
@@ -209,7 +209,7 @@ app.post("/simulate-match", async (req, res) => {
 });
 
 // Endpoint for Personality Test
-app.post("/personality-test", async (req, res) => {
+app.post("/personality-test", rateLimiter, async (req, res) => {
   try {
     const { lineupText } = req.body;
     if (!lineupText) {
@@ -237,7 +237,7 @@ app.post("/personality-test", async (req, res) => {
 });
 
 // Endpoint for Team Insight
-app.post("/team-insight", async (req, res) => {
+app.post("/team-insight", rateLimiter, async (req, res) => {
   try {
     const { lineupText } = req.body;
     if (!lineupText) {
