@@ -1,8 +1,9 @@
 // rateLimiter.js
 const { admin, db } = require('./firebase'); // ✅ Import shared instance
 
-const RATE_LIMIT = 5;
-const TIME_WINDOW_HOURS = 1;
+// --- SETTINGS CHANGED FOR TESTING ---
+const RATE_LIMIT = 10; // CHANGED: From 5 to 10
+const TIME_WINDOW_MINUTES = 10; // CHANGED: From 1 hour to 10 minutes
 
 const rateLimiter = async (req, res, next) => {
   try {
@@ -20,8 +21,9 @@ const rateLimiter = async (req, res, next) => {
     const doc = await userRef.get();
 
     const now = admin.firestore.Timestamp.now();
+    // CHANGED: Calculation now uses minutes instead of hours
     const windowStart = new admin.firestore.Timestamp(
-      now.seconds - TIME_WINDOW_HOURS * 3600,
+      now.seconds - TIME_WINDOW_MINUTES * 60,
       now.nanoseconds
     );
 
