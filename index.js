@@ -87,8 +87,6 @@ function buildPersonalityTestPrompt(lineupText) {
 You are a professional psychologist. Analyze the personality traits of a football manager who would select the following starting XI and formation:
 ${lineupText}
 Provide an insightful summary of their personality, strengths, and quirks. Keep your response under 150 words.
-Start your response with Personality Analysis: , in the first line. 
-
   `.trim();
 }
 
