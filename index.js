@@ -271,7 +271,7 @@ app.post("/team-insight", rateLimiter, async (req, res) => {
 
 
 // Endpoint for Daily Challenge
-app.post("/daily-challenge", async (req, res) => {
+app.post("/daily-challenge", rateLimiter, async (req, res) => {
   try {
     const { lineupText } = req.body;
     if (!lineupText) {
