@@ -279,7 +279,7 @@ app.post("/daily-challenge", async (req, res) => {
 
     const useMock = true;
     if (useMock) {
-      const mockChallengeResult = "Congratulations! You've completed today's challenge with your selected XI. Your team shows great potential for teamwork and strategy. Keep up the good work!";
+      const mockChallengeResult = "Congratulations1010! You've completed today's challenge with your selected XI. Your team shows great potential for teamwork and strategy. Keep up the good work!";
       return res.json({ challengeResult: mockChallengeResult });
     }
 
