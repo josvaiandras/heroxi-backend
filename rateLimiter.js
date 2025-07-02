@@ -2,7 +2,7 @@
 const { admin, db } = require('./firebase'); // ✅ Import shared instance
 
 // --- SETTINGS CHANGED FOR TESTING ---
-const RATE_LIMIT = 1; // CHANGED: From 5 to 10
+const RATE_LIMIT = 2; // CHANGED: From 5 to 10
 const TIME_WINDOW_MINUTES = 10; // CHANGED: From 1 hour to 10 minutes
 
 const rateLimiter = async (req, res, next) => {
