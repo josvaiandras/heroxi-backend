@@ -61,7 +61,7 @@ function buildMatchSimulationPrompt(teamA, teamB, formationA, formationB, lineup
 Simulate a football match between two fictional teams based on the following:
 Team A: Formation: ${formationA}, Lineup: ${lineupA}
 Team B: Formation: ${formationB}, Lineup: ${lineupB}
-Generate a 3-paragraph match report (max 200 words total):
+Generate a match report (max 200 words total):
 At the very start of the pre-match analysis, name both teams with creative, realistic names. Clearly state that Team A is the match initiator who issued the challenge or hosted the match. Then describe both teams’ strengths and weaknesses.
 Minute-by-minute highlights including goal scorers, key moments, and drama.
 Final score, winning team, and a witty football-style closing remark.
