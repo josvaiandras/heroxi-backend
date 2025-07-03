@@ -1,10 +1,10 @@
 const fs = require('fs');
 require("dotenv").config();
 const express = require("express");
-const cors = require("cors");
+const cors =require("cors");
 const bodyParser = require("body-parser");
 const { OpenAI } = require("openai");
-const admin = require('firebase-admin'); 
+const admin = require('firebase-admin');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -99,6 +99,18 @@ Keep the response concise (under 150 words) and focus on entertaining or surpris
   `.trim();
 }
 
+// 🔽 START: NEW PROMPT BUILDER FOR DAILY CHALLENGE
+// This function creates the specific prompt for evaluating the daily challenge.
+function buildDailyChallengePrompt(dailyChallenge, lineupText) {
+  return `
+This is the Daily Challenge: ${dailyChallenge}
+Here is the selected team: ${lineupText}
+Please evaluate this team thoroughly, methodically, and objectively in relation to the challenge. Go player by player, assessing how each name fits the criteria of the Daily Challenge. After the analysis, give the team a score out of 10 based on how well it fulfills the challenge.
+If the score is 7 or above, mark the result as "Daily Challenge Passed".
+  `.trim();
+}
+// 🔼 END: NEW PROMPT BUILDER FOR DAILY CHALLENGE
+
 // Endpoint for Team Rating
 app.post("/rate-my-xi", rateLimiter, async (req, res) => {
   try {
@@ -141,9 +153,8 @@ app.post("/simulate-single-match", rateLimiter, async (req, res) => {
       return res.status(400).json({ error: "England lineup and opponent name are required." });
     }
 
-    // Extract formation from englandLineup (e.g., "Here's my XI in a 4-4-2 setup:")
     const formationMatch = englandLineup.match(/in a (\d-\d-\d) setup:/);
-    const formation = formationMatch ? formationMatch[1] : "4-4-2"; // Default to 4-4-2 if not found
+    const formation = formationMatch ? formationMatch[1] : "4-4-2";
 
     const useMock = false;
     if (useMock) {
@@ -245,13 +256,12 @@ app.post("/team-insight", rateLimiter, async (req, res) => {
       return res.status(400).json({ error: "Lineup text is required." });
     }
 
-    const useMock = false; // For now, we use a mock response
+    const useMock = false;
     if (useMock) {
       const mockInsight = "This team boasts impressive pace on the wings and solid power in defense. Playmaking seems centered in the midfield, with a key player likely being the central midfielder who can dictate tempo. Overall, a balanced squad, but could be vulnerable to quick counter-attacks if the midfield press is broken.";
       return res.json({ insight: mockInsight });
     }
 
-    // This part would be used with a real API call
     const prompt = buildTeamInsightPrompt(lineupText);
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -268,12 +278,13 @@ app.post("/team-insight", rateLimiter, async (req, res) => {
 });
 
 
-// Endpoint for Daily Challenge
+// 🔽 START: UPDATED DAILY CHALLENGE ENDPOINT
+// This endpoint now receives the daily challenge text from the frontend and uses the new prompt.
 app.post("/daily-challenge", rateLimiter, async (req, res) => {
   try {
-    const { lineupText } = req.body;
-    if (!lineupText) {
-      return res.status(400).json({ error: "Lineup text is required." });
+    const { lineupText, dailyChallenge } = req.body; // Destructure both from the body
+    if (!lineupText || !dailyChallenge) {
+      return res.status(400).json({ error: "Lineup text and daily challenge are required." });
     }
 
     const useMock = false;
@@ -282,12 +293,26 @@ app.post("/daily-challenge", rateLimiter, async (req, res) => {
       return res.json({ challengeResult: mockChallengeResult });
     }
 
-    res.status(501).json({ error: "Daily challenge not implemented yet." });
-  } catch (error) {
+    // Use the new prompt builder
+    const prompt = buildDailyChallengePrompt(dailyChallenge, lineupText);
+
+    const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+    });
+
+    const text = response.choices[0].message.content;
+    
+    // Send the AI's full response back to the client
+    res.json({ challengeResult: text });
+
+  } catch (error)
+ {
     console.error("Error in daily challenge:", error);
     res.status(500).json({ error: "Failed to process daily challenge." });
   }
 });
+// 🔼 END: UPDATED DAILY CHALLENGE ENDPOINT
 
 // Endpoint to Store Team Data
 app.post('/save-team', async (req, res) => {
