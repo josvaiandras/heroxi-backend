@@ -106,7 +106,7 @@ function buildDailyChallengePrompt(dailyChallenge, lineupText) {
 This is the Daily Challenge: ${dailyChallenge}
 Here is the selected team: ${lineupText}
 Please evaluate this team thoroughly, methodically, and objectively in relation to the challenge. Go player by player, assessing how each name fits the criteria of the Daily Challenge. After the analysis, give the team a score out of 10 based on how well it fulfills the challenge.
-If the score is 7 or above, mark the result as "Daily Challenge Passed".
+If the score is 7 or above, mark the result as "Daily Challenge Passed". Keep your answer below 150 words. 
   `.trim();
 }
 // 🔼 END: NEW PROMPT BUILDER FOR DAILY CHALLENGE
