@@ -46,8 +46,8 @@ app.get('/', (req, res) => {
 function buildPrompt(lineupText) {
   return `
 Please rate this football XI objectively on a scale from -3 to 10 (negative scores allowed). Your response must start with the rating on the first line in this exact format:
-Rating: <score>
-Then, provide a concise analysis (around 150 words) covering player fit, tactical fit, strengths, weaknesses, and key tactical observations. Use an analytical tone, and optionally add a light football joke.
+Rating: <score> /10
+Then, provide a concise analysis (around 150 words) covering player fit, tactical fit, strengths, weaknesses, and key tactical observations. Use an analytical tone.
 
 Team:
 ${lineupText}
@@ -63,7 +63,7 @@ Team B: Formation: ${formationB}, Lineup: ${lineupB}
 Generate a match report (max 200 words total):
 At the very start of the pre-match analysis, name both teams with creative, realistic names. Clearly state that Team A is the match initiator who issued the challenge or hosted the match. Then describe both teams’ strengths and weaknesses.
 Minute-by-minute highlights including goal scorers, key moments, and drama.
-Final score, winning team, and a witty football-style closing remark.
+Final score, winning team.
 Return plain text only in a style like a professional sports journalist summarizing the match.
   `.trim();
 }
@@ -75,7 +75,8 @@ Simulate a football match between England (Formation: ${formation}, Lineup: ${en
 Write a concise 3-paragraph match summary (max 200 words total):
 Pre-match analysis highlighting the strengths and weaknesses of both teams.
 Minute-by-minute highlights including goal scorers and key events.
-Final score, the winner, and a witty football-related closing remark.
+Final score, the winner.
+Use a creative, epic tone, as if narrating a thrilling football match.
 Return plain text only.
   `.trim();
 }
@@ -85,7 +86,7 @@ function buildPersonalityTestPrompt(lineupText) {
   return `
 You are a professional psychologist. Analyze the personality traits of a football manager who would select the following starting XI and formation:
 ${lineupText}
-Provide an insightful summary of their personality, strengths, and quirks. Keep your response under 150 words.
+Provide an insightful summary of their personality, strengths, and weaknesses. Keep your response under 150 words.
   `.trim();
 }
 
