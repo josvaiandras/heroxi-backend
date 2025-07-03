@@ -45,13 +45,12 @@ app.get('/', (req, res) => {
 // 🧠 Rating Prompt Builder
 function buildPrompt(lineupText) {
   return `
-I've got this football XI with formation and roles:
-${lineupText}
-
-Please rate the team objectively on a scale from -3 to 10 (negative scores allowed). Start your response with the rating on the first line in this exact format:
+Please rate this football XI objectively on a scale from -3 to 10 (negative scores allowed). Your response must start with the rating on the first line in this exact format:
 Rating: <score>
-Then, provide a concise analysis (around 150 words) covering player fit, tactical fit, strengths, weaknesses, and key tactical observations. Use an analytical and professional tone, and if appropriate, include a light, relevant football joke or witty comment to add some personality.
+Then, provide a concise analysis (around 150 words) covering player fit, tactical fit, strengths, weaknesses, and key tactical observations. Use an analytical tone, and optionally add a light football joke.
 
+Team:
+${lineupText}
   `.trim();
 }
 
@@ -119,14 +118,6 @@ app.post("/rate-my-xi", rateLimiter, async (req, res) => {
       return res.status(400).json({ error: "Lineup text is required." });
     }
 
-    const useMock = false;
-    if (useMock) {
-      return res.json({
-        rating: 8.5,
-        analysis: "This mock analysis suggests a strong team with good tactical fit, but perhaps a slight weakness in aerial duels. Still, a solid 8.5! They're almost as good as my imaginary team that always wins. Almost. 😉"
-      });
-    }
-
     const prompt = buildPrompt(lineupText);
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -134,9 +125,18 @@ app.post("/rate-my-xi", rateLimiter, async (req, res) => {
     });
 
     const text = response.choices[0].message.content;
-    const ratingMatch = text.match(/^(-?\d+(\.\d+)?)/);
-    const rating = ratingMatch ? parseFloat(ratingMatch[1]) : null;
-    const analysis = ratingMatch ? text.substring(ratingMatch[0].length).trim() : text.trim();
+    const ratingRegex = /Rating:\s*(-?\d+(\.\d+)?)/; // Match "Rating: <score>" anywhere
+    const ratingMatch = text.match(ratingRegex);
+    let rating = null;
+    let analysis = '';
+
+    if (ratingMatch) {
+      rating = parseFloat(ratingMatch[1]);
+      const ratingIndex = text.indexOf(ratingMatch[0]);
+      analysis = text.substring(ratingIndex + ratingMatch[0].length).trim();
+    } else {
+      analysis = "Unable to extract rating from the response. Please try again.";
+    }
 
     res.json({ rating, analysis });
   } catch (error) {
