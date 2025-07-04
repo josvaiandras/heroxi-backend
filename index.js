@@ -46,7 +46,7 @@ app.get('/', (req, res) => {
 function buildPrompt(lineupText) {
   return `
 Please rate this football XI objectively on a scale from -3 to 10 (negative scores allowed). Your response must start with the rating on the first line in this exact format:
-Rating: <score> /10
+Rating: <score> / 10
 Then, provide a concise analysis (around 150 words) covering player fit, tactical fit, strengths, weaknesses, and key tactical observations. Use an analytical tone.
 
 Team:
@@ -61,7 +61,7 @@ Simulate a football match between two fictional teams based on the following:
 Team A: Formation: ${formationA}, Lineup: ${lineupA}
 Team B: Formation: ${formationB}, Lineup: ${lineupB}
 Generate a match report (max 200 words total):
-At the very start of the pre-match analysis, name both teams with creative, realistic names. Clearly state that Team A is the match initiator who issued the challenge or hosted the match. Then describe both teams’ strengths and weaknesses.
+At the very start of the pre-match analysis. Clearly state that Team A is the match initiator who issued the challenge. Then describe both teams’ strengths and weaknesses.
 Minute-by-minute highlights including goal scorers, key moments, and drama.
 Final score, winning team.
 Return plain text only in a style like a professional sports journalist summarizing the match.
@@ -197,12 +197,7 @@ app.post("/simulate-match", rateLimiter, async (req, res) => {
       return res.status(400).json({ error: "Match is incomplete. Both teams and formations are required." });
     }
 
-    const useMock = false;
-    if (useMock) {
-      const mockResult = `Mock simulation: Team A (${matchData.formationA}) vs. Team B (${matchData.formationB}). Team A started strong, exploiting the wings. Team B countered with a solid midfield press. In the 15th minute, a Team A striker scored from a cross. Team B equalized in the 60th minute with a long-range shot. The match ended 1-1, with both teams showing grit. Looks like the only winner here is the popcorn vendor! 🍿`;
-      return res.json({ result: mockResult });
-    }
-
+    // --- This part remains the same ---
     const prompt = buildMatchSimulationPrompt(
       "Team A", "Team B",
       matchData.formationA, matchData.formationB,
@@ -212,69 +207,25 @@ app.post("/simulate-match", rateLimiter, async (req, res) => {
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
     });
-
     const text = response.choices[0].message.content;
-    res.json({ result: text });
+    // --- End of existing logic ---
+
+
+    // --- MODIFIED: Save the result to Firestore ---
+    // Instead of sending the result back in the response,
+    // we update the document, which will trigger the frontend listeners.
+    await matchRef.update({
+      simulationResult: text,
+      status: 'completed'
+    });
+
+    // We can now send a simple success message. The client will get the
+    // result via the Firestore listener.
+    res.status(200).json({ message: "Simulation completed and result stored." });
+
   } catch (error) {
     console.error("Error simulating match:", error);
     res.status(500).json({ error: "Failed to simulate match." });
-  }
-});
-
-// Endpoint for Personality Test
-app.post("/personality-test", rateLimiter, async (req, res) => {
-  try {
-    const { lineupText } = req.body;
-    if (!lineupText) {
-      return res.status(400).json({ error: "Lineup text is required." });
-    }
-
-    const useMock = false
-    if (useMock) {
-      const mockAnalysis = "Based on your England XI selection, you exhibit a strategic mindset with a preference for balanced gameplay. Your choices suggest you're a team player who values both defensive stability and creative attacking options. You likely approach challenges methodically but aren't afraid to take calculated risks.";
-      return res.json({ analysis: mockAnalysis });
-    }
-
-    const prompt = buildPersonalityTestPrompt(lineupText);
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const text = response.choices[0].message.content;
-    res.json({ analysis: text });
-  } catch (error) {
-    console.error("Error in personality test:", error);
-    res.status(500).json({ error: "Failed to perform personality test." });
-  }
-});
-
-// Endpoint for Team Insight
-app.post("/team-insight", rateLimiter, async (req, res) => {
-  try {
-    const { lineupText } = req.body;
-    if (!lineupText) {
-      return res.status(400).json({ error: "Lineup text is required." });
-    }
-
-    const useMock = false;
-    if (useMock) {
-      const mockInsight = "This team boasts impressive pace on the wings and solid power in defense. Playmaking seems centered in the midfield, with a key player likely being the central midfielder who can dictate tempo. Overall, a balanced squad, but could be vulnerable to quick counter-attacks if the midfield press is broken.";
-      return res.json({ insight: mockInsight });
-    }
-
-    const prompt = buildTeamInsightPrompt(lineupText);
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const text = response.choices[0].message.content;
-    res.json({ insight: text });
-
-  } catch (error) {
-    console.error("Error in team insight:", error);
-    res.status(500).json({ error: "Failed to perform team insight." });
   }
 });
 
