@@ -46,11 +46,20 @@ app.get('/', (req, res) => {
 function buildPrompt(lineupText) {
   return `
 Please rate this football XI objectively on a scale from -3 to 10 (negative scores allowed). Your response must start with the rating on the first line in this exact format:
-Rating: <score> / 10
+Rating: <score> 
 Then, provide a concise analysis (around 150 words) covering player fit, tactical fit, strengths, weaknesses, and key tactical observations. Use an analytical tone.
 
 Team:
 ${lineupText}
+  `.trim();
+}
+
+// 💡 Team Insight Prompt Builder
+function buildTeamInsightPrompt(lineupText) {
+  return `
+Analyze the following football team and provide as many fun and interesting facts as possible about the players:
+${lineupText}
+Keep the response concise (under 150 words) and focus on entertaining or surprising trivia, achievements, nicknames, unique skills, or memorable moments related to the players.
   `.trim();
 }
 
@@ -145,6 +154,30 @@ app.post("/rate-my-xi", rateLimiter, async (req, res) => {
     res.status(500).json({ error: "Failed to rate team." });
   }
 });
+
+// Endpoint for Team Insight
+app.post("/team-insight", rateLimiter, async (req, res) => {
+  try {
+    const { lineupText } = req.body;
+    if (!lineupText) {
+      return res.status(400).json({ error: "Lineup text is required." });
+    }
+
+    const prompt = buildTeamInsightPrompt(lineupText);
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const insight = response.choices[0].message.content;
+    res.json({ insight });
+
+  } catch (error) {
+    console.error("Error fetching team insight:", error);
+    res.status(500).json({ error: "Failed to fetch team insight." });
+  }
+});
+
 
 // Endpoint for Single-Player Match Simulation
 app.post("/simulate-single-match", rateLimiter, async (req, res) => {
