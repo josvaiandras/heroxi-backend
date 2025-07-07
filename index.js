@@ -155,6 +155,31 @@ app.post("/rate-my-xi", rateLimiter, async (req, res) => {
   }
 });
 
+// Endpoint for Personality Test
+app.post("/personality-test", rateLimiter, async (req, res) => {
+  try {
+    const { lineupText } = req.body;
+    if (!lineupText) {
+      return res.status(400).json({ error: "Lineup text is required." });
+    }
+
+    const prompt = buildPersonalityTestPrompt(lineupText);
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    // The handler in script.js expects a JSON object with an 'analysis' key
+    const analysis = response.choices[0].message.content;
+    res.json({ analysis });
+
+  } catch (error) {
+    console.error("Error fetching personality analysis:", error);
+    res.status(500).json({ error: "Failed to fetch personality analysis." });
+  }
+});
+
+
 // Endpoint for Team Insight
 app.post("/team-insight", rateLimiter, async (req, res) => {
   try {
