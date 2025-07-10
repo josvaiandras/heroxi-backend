@@ -47,7 +47,7 @@ function buildPrompt(lineupText) {
   return `
 Please rate this football XI objectively on a scale from -3 to 10 (negative scores allowed). Your response must start with the rating on the first line in this exact format:
 Rating: <score> 
-Then, provide a concise analysis (around 150 words) covering player fit, tactical fit, strengths, weaknesses, and key tactical observations. Use an analytical tone.
+Then, provide a concise analysis (around 200 words) covering player fit, tactical fit, strengths, weaknesses, and key tactical observations. Use an analytical tone.
 
 Team:
 ${lineupText}
@@ -59,7 +59,7 @@ function buildTeamInsightPrompt(lineupText) {
   return `
 Analyze the following football team and provide as many fun and interesting facts as possible about the players:
 ${lineupText}
-Keep the response concise (under 150 words) and focus on entertaining or surprising trivia, achievements, nicknames, unique skills, or memorable moments related to the players.
+Keep the response concise (under 200 words) and focus on entertaining or surprising trivia, achievements, nicknames, unique skills, or memorable moments related to the players.
   `.trim();
 }
 
@@ -95,9 +95,30 @@ function buildPersonalityTestPrompt(lineupText) {
   return `
 You are a professional psychologist. Analyze the personality traits of a football manager who would select the following starting XI and formation:
 ${lineupText}
-Provide an insightful summary of their personality, strengths, and weaknesses. Keep your response under 150 words.
+Provide an insightful summary of their personality, strengths, and weaknesses. NOT thheir football manager style, but deduct real life personality. Keep your response under 150 words.
   `.trim();
 }
+
+// 🏆 Tournament Simulation Prompt Builder
+function buildTournamentSimulationPrompt(tournamentType, lineupText) {
+  return `
+Simulate the following tournament: ${tournamentType}. (Limit: 200 words)
+
+Using this England team:
+${lineupText}
+
+Include famous players from ${tournamentType} (e.g. Zidane in 2000, Iniesta in 2012, etc.)
+
+Generate a realistic path for England through the tournament (group stage, knockout rounds, etc.).
+
+Provide match results, key moments, standout performers, and realistic scores.
+
+Do not make it overly positive or biased — if England loses, explain how and why realistically.
+
+If England doesn’t win the tournament, end by naming the real-life winner of that tournament.
+  `.trim();
+}
+
 
 // 💡 Team Insight Prompt Builder
 function buildTeamInsightPrompt(lineupText) {
@@ -154,6 +175,31 @@ app.post("/rate-my-xi", rateLimiter, async (req, res) => {
     res.status(500).json({ error: "Failed to rate team." });
   }
 });
+
+
+// Endpoint for Tournament Simulation
+app.post("/simulate-tournament", rateLimiter, async (req, res) => {
+  try {
+    const { lineupText, tournamentType } = req.body;
+    if (!lineupText || !tournamentType) {
+      return res.status(400).json({ error: "Lineup text and tournament type are required." });
+    }
+
+    const prompt = buildTournamentSimulationPrompt(tournamentType, lineupText);
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const tournamentResult = response.choices[0].message.content;
+    res.json({ tournamentResult });
+
+  } catch (error) {
+    console.error("Error simulating tournament:", error);
+    res.status(500).json({ error: "Failed to simulate tournament." });
+  }
+});
+
 
 // Endpoint for Personality Test
 app.post("/personality-test", rateLimiter, async (req, res) => {
