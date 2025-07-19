@@ -95,7 +95,7 @@ function buildPersonalityTestPrompt(lineupText) {
   return `
 You are a professional psychologist. Analyze the personality traits of a football manager who would select the following starting XI and formation:
 ${lineupText}
-Provide an insightful summary of their personality, strengths, and weaknesses. NOT thheir football manager style, but deduct real life personality. Keep your response under 150 words.
+Provide an insightful summary of their personality, strengths, and weaknesses. NOT their football manager style, but deduct real life personality. Keep your response under 150 words.
   `.trim();
 }
 
@@ -109,11 +109,11 @@ ${lineupText}
 
 Include famous players from ${tournamentType} (e.g. Zidane in 2000, Iniesta in 2012, etc.)
 
-Generate a realistic path for England through the tournament (group stage, knockout rounds, etc.).
+Generate a realistic path for England through the tournament (group stage, knockout rounds, etc.), but don't make it the real historical accurate outcome.
 
 Provide match results, key moments, standout performers, and realistic scores.
 
-Do not make it overly positive or biased — if England loses, explain how and why realistically.
+Do not make it overly positive or biased — if England loses, explain how and why realistically. 
 
 If England doesn’t win the tournament, end by naming the real-life winner of that tournament.
   `.trim();
