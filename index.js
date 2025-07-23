@@ -9,28 +9,6 @@ const admin = require('firebase-admin');
 const app = express();
 const port = process.env.PORT || 3000;
 
-const challengeHighlights = [
-    "of players who all scored penalties for England",
-    "with more than 50 caps each",
-    "with the best haircuts",
-    "with under 40 total England appearances",
-    "with the most goals",
-    "with average height above 6 feet",
-    "with unique first names",
-    "with the most clean sheets",
-    "of players who all played in the Premier League era",
-    "with the most assists",
-    "of players who were all born in London",
-    "of players from a single club",
-    "with only players from 1 year",
-    "with the highest combined transfer value",
-    "with the lowest combined transfer value",
-    "of players who all played abroad during their career",
-    "with the youngest average age",
-    "with the most caps",
-    "of players who all have one-syllable last names",
-    "with the oldest average age"
-  ];
 
 // Middleware
 app.use(cors());
@@ -162,31 +140,6 @@ If the score is 7 or above, mark the result as "Daily Challenge Passed". Keep yo
   `.trim();
 }
 // 🔼 END: NEW PROMPT BUILDER FOR DAILY CHALLENGE
-
-
-// 🔽 START: NEW SECURE ENDPOINT FOR FETCHING DAILY CHALLENGE
-app.get("/get-daily-challenge", rateLimiter, (req, res) => {
-  try {
-    // This logic now runs securely on the server
-    const today = new Date();
-    const startOfYear = new Date(today.getFullYear(), 0, 0);
-    const diff = today - startOfYear;
-    const oneDay = 1000 * 60 * 60 * 24;
-    const dayOfYear = Math.floor(diff / oneDay);
-
-    const challengeIndex = dayOfYear % challengeHighlights.length;
-    const currentChallenge = challengeHighlights[challengeIndex];
-
-    // Send ONLY the current challenge text back to the client
-    res.status(200).json({ dailyChallenge: currentChallenge });
-
-  } catch (error) {
-    console.error("Error fetching daily challenge:", error);
-    res.status(500).json({ error: "Failed to get daily challenge." });
-  }
-});
-// 🔼 END: NEW SECURE ENDPOINT
-
 
 // Endpoint for Team Rating
 app.post("/rate-my-xi", rateLimiter, async (req, res) => {
