@@ -69,12 +69,35 @@ function buildMatchSimulationPrompt(teamA, teamB, formationA, formationB, lineup
 Simulate a football match between two fictional teams based on the following:
 Team A: Formation: ${formationA}, Lineup: ${lineupA}
 Team B: Formation: ${formationB}, Lineup: ${lineupB}
+
 Generate a match report (max 200 words total):
-At the very start of the pre-match analysis. Clearly state that Team A is the match initiator who issued the challenge. Then describe both teams’ strengths and weaknesses.
-Minute-by-minute highlights including goal scorers, key moments, and drama.
-Final score, winning team.
+1.  **Pre-match Analysis:** At the very start, clearly state that Team A is the match initiator who issued the challenge. Then describe both teams’ strengths and weaknesses.
+2.  **Highlights:** Provide minute-by-minute highlights including goal scorers, key moments, and drama.
+3.  **Result:** State the final score.
+4.  **Winner Declaration:** On a new line, at the very end of your response, you MUST declare the winner in this exact format: "Winner: Team A" or "Winner: Team B".
+
 Return plain text only in a style like a professional sports journalist summarizing the match.
   `.trim();
+}
+
+// 🦾 NEW HELPER FUNCTION: To parse the winner from the AI's response
+function parseWinnerFromText(text) {
+    const winnerRegex = /Winner:\s*(Team A|Team B)/i;
+    const match = text.match(winnerRegex);
+
+    if (match && match[1]) {
+        const winner = match[1].toLowerCase();
+        if (winner === 'team a') {
+            return 'teamA';
+        } else if (winner === 'team b') {
+            return 'teamB';
+        }
+    }
+    
+    // Fallback: If the AI fails to follow the format, assign a winner randomly
+    // to prevent the match from getting stuck.
+    console.warn("Could not parse a clear winner from the simulation text. Assigning a winner randomly.");
+    return Math.random() < 0.5 ? 'teamA' : 'teamB';
 }
 
 // 🏟️ Single Match Simulation Prompt Builder
@@ -135,7 +158,7 @@ function buildDailyChallengePrompt(dailyChallenge, lineupText) {
   return `
 This is the Daily Challenge: ${dailyChallenge}
 Here is the selected team: ${lineupText}
-Please evaluate this team thoroughly, methodically, and objectively in relation to the challenge. Go player by player, assessing how each name fits the criteria of the Daily Challenge. After the analysis, give the team a score out of 10 based on how well it fulfills the challenge.
+Please evaluate this team thoroughly, methodically, and objectively in relation to the challenge. Go player by player, assessing how each name fits the criteria of the Challenge. Take your time to verify the accuracy of your information. After the analysis, give the team a score out of 10 based on how well it fulfills the challenge.
 If the score is 7 or above, mark the result as "Daily Challenge Passed". Keep your answer below 150 words. 
   `.trim();
 }
@@ -282,6 +305,7 @@ app.post("/simulate-single-match", rateLimiter, async (req, res) => {
 });
 
 // Endpoint for Multiplayer Match Simulation
+// MODIFIED: This endpoint now parses the winner and saves it to Firestore.
 app.post("/simulate-match", rateLimiter, async (req, res) => {
   try {
     const { matchId } = req.body;
@@ -301,30 +325,31 @@ app.post("/simulate-match", rateLimiter, async (req, res) => {
       return res.status(400).json({ error: "Match is incomplete. Both teams and formations are required." });
     }
 
-    // --- This part remains the same ---
+    // --- Generate the simulation result from OpenAI ---
     const prompt = buildMatchSimulationPrompt(
       "Team A", "Team B",
       matchData.formationA, matchData.formationB,
       matchData.teamA.join(", "), matchData.teamB.join(", ")
     );
+
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
     });
-    const text = response.choices[0].message.content;
-    // --- End of existing logic ---
+    const simulationText = response.choices[0].message.content;
+    
+    // --- NEW: Parse the winner from the result ---
+    const winner = parseWinnerFromText(simulationText);
 
-
-    // --- MODIFIED: Save the result to Firestore ---
-    // Instead of sending the result back in the response,
-    // we update the document, which will trigger the frontend listeners.
+    // --- MODIFIED: Save the result AND the winner to Firestore ---
+    // This update will trigger the onSnapshot listener on the frontend for both players.
     await matchRef.update({
-      simulationResult: text,
-      status: 'completed'
+      simulationResult: simulationText,
+      status: 'completed',
+      winner: winner // This will be either 'teamA' or 'teamB'
     });
 
-    // We can now send a simple success message. The client will get the
-    // result via the Firestore listener.
+    // Send a success message. The client gets the result via its Firestore listener.
     res.status(200).json({ message: "Simulation completed and result stored." });
 
   } catch (error) {
