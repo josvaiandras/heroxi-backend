@@ -1,26 +1,27 @@
 const fs = require('fs');
 require("dotenv").config();
 const express = require("express");
-const cors =require("cors");
+const cors = require("cors");
 const bodyParser = require("body-parser");
 const { OpenAI } = require("openai");
 const admin = require('firebase-admin');
+const NodeCache = require('node-cache'); // 👈 ADDED
 
 const app = express();
 const port = process.env.PORT || 3000;
-
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
+// Initialize cache with a 30-minute Time-To-Live (TTL) for items
+const leaderboardCache = new NodeCache({ stdTTL: 1800 }); // 👈 ADDED
+
 // Firebase Admin SDK Initialization
 let serviceAccount;
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  // Render environment
   serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 } else {
-  // Local environment
   serviceAccount = JSON.parse(fs.readFileSync('serviceAccountKey.json', 'utf8'));
 }
 
@@ -42,7 +43,7 @@ app.get('/', (req, res) => {
   res.send('Hello from HeroXI backend!');
 });
 
-// 🧠 Rating Prompt Builder
+// --- PROMPT BUILDER FUNCTIONS (Unchanged) ---
 function buildPrompt(lineupText) {
   return `
 Please rate this football XI objectively on a scale from -3 to 10 (negative scores allowed). Your response must start with the rating on the first line in this exact format:
@@ -54,16 +55,14 @@ ${lineupText}
   `.trim();
 }
 
-// 💡 Team Insight Prompt Builder
 function buildTeamInsightPrompt(lineupText) {
   return `
 Analyze the following football team and provide as many fun and interesting facts as possible about the players:
 ${lineupText}
-Keep the response concise (under 200 words) and focus on entertaining or surprising trivia, achievements, nicknames, unique skills, or memorable moments related to the players.
+Keep the response concise (under 150 words) and focus on entertaining or surprising trivia, achievements, nicknames, unique skills, or memorable moments related to the players.
   `.trim();
 }
 
-// 🏟️ Match Simulation Prompt Builder
 function buildMatchSimulationPrompt(teamA, teamB, formationA, formationB, lineupA, lineupB) {
   return `
 Simulate a football match between two fictional teams based on the following:
@@ -80,27 +79,17 @@ Return plain text only in a style like a professional sports journalist summariz
   `.trim();
 }
 
-// 🦾 NEW HELPER FUNCTION: To parse the winner from the AI's response
 function parseWinnerFromText(text) {
     const winnerRegex = /Winner:\s*(Team A|Team B)/i;
     const match = text.match(winnerRegex);
-
     if (match && match[1]) {
         const winner = match[1].toLowerCase();
-        if (winner === 'team a') {
-            return 'teamA';
-        } else if (winner === 'team b') {
-            return 'teamB';
-        }
+        return winner === 'team a' ? 'teamA' : 'teamB';
     }
-    
-    // Fallback: If the AI fails to follow the format, assign a winner randomly
-    // to prevent the match from getting stuck.
-    console.warn("Could not parse a clear winner from the simulation text. Assigning a winner randomly.");
+    console.warn("Could not parse a clear winner. Assigning a winner randomly.");
     return Math.random() < 0.5 ? 'teamA' : 'teamB';
 }
 
-// 🏟️ Single Match Simulation Prompt Builder
 function buildSingleMatchSimulationPrompt(englandLineup, opponentName, formation) {
   return `
 Simulate a football match between England (Formation: ${formation}, Lineup: ${englandLineup}) and an opponent named ${opponentName}.
@@ -113,7 +102,6 @@ Return plain text only.
   `.trim();
 }
 
-// 👤 Personality Test Prompt Builder
 function buildPersonalityTestPrompt(lineupText) {
   return `
 You are a professional psychologist. Analyze the personality traits of a football manager who would select the following starting XI and formation:
@@ -122,7 +110,6 @@ Provide an insightful summary of their personality, strengths, and weaknesses. N
   `.trim();
 }
 
-// 🏆 Tournament Simulation Prompt Builder
 function buildTournamentSimulationPrompt(tournamentType, lineupText) {
   return `
 Simulate the following tournament: ${tournamentType}. (Limit: 200 words)
@@ -142,18 +129,6 @@ If England doesn’t win the tournament, end by naming the real-life winner of t
   `.trim();
 }
 
-
-// 💡 Team Insight Prompt Builder
-function buildTeamInsightPrompt(lineupText) {
-  return `
-Analyze the following football team and provide as many fun and interesting facts as possible about the players:
-${lineupText}
-Keep the response concise (under 150 words) and focus on entertaining or surprising trivia, achievements, nicknames, unique skills, or memorable moments related to the players.
-  `.trim();
-}
-
-// 🔽 START: NEW PROMPT BUILDER FOR DAILY CHALLENGE
-// This function creates the specific prompt for evaluating the daily challenge.
 function buildDailyChallengePrompt(dailyChallenge, lineupText) {
   return `
 This is the Daily Challenge: ${dailyChallenge}
@@ -162,9 +137,99 @@ Please evaluate this team thoroughly, methodically, and objectively in relation 
 If the score is 7 or above, mark the result as "Daily Challenge Passed". Keep your answer below 150 words. 
   `.trim();
 }
-// 🔼 END: NEW PROMPT BUILDER FOR DAILY CHALLENGE
 
-// Endpoint for Team Rating
+// =================================================================
+// START: NEW CACHED LEADERBOARD ENDPOINTS
+// =================================================================
+
+async function fetchLeaderboardFromFirestore(type) {
+    const field = type === 'daily' ? 'totalCompleted' : 'matchesWon';
+    const usersRef = db.collection("users");
+    const q = usersRef.where(field, ">", 0).orderBy(field, "desc").limit(100);
+    const querySnapshot = await q.get();
+    
+    const users = [];
+    querySnapshot.forEach(doc => {
+        users.push({ uid: doc.id, ...doc.data() });
+    });
+    return users;
+}
+
+app.get('/leaderboards/daily', async (req, res) => {
+    const cacheKey = 'leaderboard_daily';
+    try {
+        let dailyLeaderboard = leaderboardCache.get(cacheKey);
+        if (!dailyLeaderboard) {
+            console.log("Fetching daily leaderboard from Firestore (cache miss)...");
+            dailyLeaderboard = await fetchLeaderboardFromFirestore('daily');
+            leaderboardCache.set(cacheKey, dailyLeaderboard);
+        } else {
+            console.log("Serving daily leaderboard from cache.");
+        }
+        res.json(dailyLeaderboard);
+    } catch (error) {
+        console.error("Error fetching daily leaderboard:", error);
+        res.status(500).json({ error: "Failed to load leaderboard." });
+    }
+});
+
+app.get('/leaderboards/h2h', async (req, res) => {
+    const cacheKey = 'leaderboard_h2h';
+    try {
+        let h2hLeaderboard = leaderboardCache.get(cacheKey);
+        if (!h2hLeaderboard) {
+            console.log("Fetching H2H leaderboard from Firestore (cache miss)...");
+            h2hLeaderboard = await fetchLeaderboardFromFirestore('h2h');
+            leaderboardCache.set(cacheKey, h2hLeaderboard);
+        } else {
+            console.log("Serving H2H leaderboard from cache.");
+        }
+        res.json(h2hLeaderboard);
+    } catch (error) {
+        console.error("Error fetching H2H leaderboard:", error);
+        res.status(500).json({ error: "Failed to load leaderboard." });
+    }
+});
+
+// =================================================================
+// START: NEW REAL-TIME STAT UPDATE ENDPOINTS
+// =================================================================
+
+app.post('/update-stats/win/:userId', async (req, res) => {
+    const { userId } = req.params;
+    if (!userId) return res.status(400).json({ error: 'User ID is required.' });
+
+    const userRef = db.collection('users').doc(userId);
+    
+    try {
+        await userRef.update({
+            matchesWon: admin.firestore.FieldValue.increment(1),
+            lastWinAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        const updatedUserDoc = await userRef.get();
+        if (!updatedUserDoc.exists()) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+        const newScore = updatedUserDoc.data().matchesWon;
+        
+        const higherScoresSnapshot = await db.collection('users').where('matchesWon', '>', newScore).count().get();
+        const newRank = higherScoresSnapshot.data().count + 1;
+
+        leaderboardCache.del('leaderboard_h2h');
+
+        res.json({ newScore, newRank });
+
+    } catch (error) {
+        console.error(`Error updating win stats for ${userId}:`, error);
+        res.status(500).json({ error: 'Failed to update win stats.' });
+    }
+});
+
+// =================================================================
+// ALL OTHER ENDPOINTS
+// =================================================================
+
 app.post("/rate-my-xi", rateLimiter, async (req, res) => {
   try {
     const { lineupText } = req.body;
@@ -179,7 +244,7 @@ app.post("/rate-my-xi", rateLimiter, async (req, res) => {
     });
 
     const text = response.choices[0].message.content;
-    const ratingRegex = /Rating:\s*(-?\d+(\.\d+)?)/; // Match "Rating: <score>" anywhere
+    const ratingRegex = /Rating:\s*(-?\d+(\.\d+)?)/;
     const ratingMatch = text.match(ratingRegex);
     let rating = null;
     let analysis = '';
@@ -199,8 +264,6 @@ app.post("/rate-my-xi", rateLimiter, async (req, res) => {
   }
 });
 
-
-// Endpoint for Tournament Simulation
 app.post("/simulate-tournament", rateLimiter, async (req, res) => {
   try {
     const { lineupText, tournamentType } = req.body;
@@ -223,8 +286,6 @@ app.post("/simulate-tournament", rateLimiter, async (req, res) => {
   }
 });
 
-
-// Endpoint for Personality Test
 app.post("/personality-test", rateLimiter, async (req, res) => {
   try {
     const { lineupText } = req.body;
@@ -238,7 +299,6 @@ app.post("/personality-test", rateLimiter, async (req, res) => {
       messages: [{ role: "user", content: prompt }],
     });
 
-    // The handler in script.js expects a JSON object with an 'analysis' key
     const analysis = response.choices[0].message.content;
     res.json({ analysis });
 
@@ -248,8 +308,6 @@ app.post("/personality-test", rateLimiter, async (req, res) => {
   }
 });
 
-
-// Endpoint for Team Insight
 app.post("/team-insight", rateLimiter, async (req, res) => {
   try {
     const { lineupText } = req.body;
@@ -272,8 +330,6 @@ app.post("/team-insight", rateLimiter, async (req, res) => {
   }
 });
 
-
-// Endpoint for Single-Player Match Simulation
 app.post("/simulate-single-match", rateLimiter, async (req, res) => {
   try {
     const { englandLineup, opponentName } = req.body;
@@ -283,13 +339,7 @@ app.post("/simulate-single-match", rateLimiter, async (req, res) => {
 
     const formationMatch = englandLineup.match(/in a (\d-\d-\d) setup:/);
     const formation = formationMatch ? formationMatch[1] : "4-4-2";
-
-    const useMock = false;
-    if (useMock) {
-      const mockResult = `Mock simulation: England (${formation}) vs. ${opponentName}. England started with high pressing, exploiting ${opponentName}'s weak flanks. ${opponentName} countered with quick transitions. In the 20th minute, an England striker scored from a set-piece. ${opponentName} equalized in the 55th minute via a penalty. A late England goal in the 85th minute sealed it. Final score: 2-1 to England. Looks like ${opponentName}'s defense forgot their boots today! ⚽`;
-      return res.json({ result: mockResult });
-    }
-
+    
     const prompt = buildSingleMatchSimulationPrompt(englandLineup, opponentName, formation);
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -304,8 +354,6 @@ app.post("/simulate-single-match", rateLimiter, async (req, res) => {
   }
 });
 
-// Endpoint for Multiplayer Match Simulation
-// MODIFIED: This endpoint now parses the winner and saves it to Firestore.
 app.post("/simulate-match", rateLimiter, async (req, res) => {
   try {
     const { matchId } = req.body;
@@ -325,7 +373,6 @@ app.post("/simulate-match", rateLimiter, async (req, res) => {
       return res.status(400).json({ error: "Match is incomplete. Both teams and formations are required." });
     }
 
-    // --- Generate the simulation result from OpenAI ---
     const prompt = buildMatchSimulationPrompt(
       "Team A", "Team B",
       matchData.formationA, matchData.formationB,
@@ -338,18 +385,14 @@ app.post("/simulate-match", rateLimiter, async (req, res) => {
     });
     const simulationText = response.choices[0].message.content;
     
-    // --- NEW: Parse the winner from the result ---
     const winner = parseWinnerFromText(simulationText);
 
-    // --- MODIFIED: Save the result AND the winner to Firestore ---
-    // This update will trigger the onSnapshot listener on the frontend for both players.
     await matchRef.update({
       simulationResult: simulationText,
       status: 'completed',
-      winner: winner // This will be either 'teamA' or 'teamB'
+      winner: winner
     });
 
-    // Send a success message. The client gets the result via its Firestore listener.
     res.status(200).json({ message: "Simulation completed and result stored." });
 
   } catch (error) {
@@ -358,44 +401,71 @@ app.post("/simulate-match", rateLimiter, async (req, res) => {
   }
 });
 
-
-// 🔽 START: UPDATED DAILY CHALLENGE ENDPOINT
-// This endpoint now receives the daily challenge text from the frontend and uses the new prompt.
+// REPLACED Daily Challenge Endpoint
 app.post("/daily-challenge", rateLimiter, async (req, res) => {
-  try {
-    const { lineupText, dailyChallenge } = req.body; // Destructure both from the body
-    if (!lineupText || !dailyChallenge) {
-      return res.status(400).json({ error: "Lineup text and daily challenge are required." });
+    try {
+        const { lineupText, dailyChallenge } = req.body;
+        const authHeader = req.headers.authorization;
+        const token = authHeader && authHeader.split(' ')[1];
+        
+        if (!lineupText || !dailyChallenge || !token) {
+            return res.status(400).json({ error: "Lineup, challenge, and auth token are required." });
+        }
+
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        const userId = decodedToken.uid;
+
+        const prompt = buildDailyChallengePrompt(dailyChallenge, lineupText);
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: prompt }],
+        });
+        const challengeResultText = response.choices[0].message.content;
+
+        let responsePayload = { challengeResult: challengeResultText };
+
+        if (challengeResultText.includes("Daily Challenge Passed")) {
+            const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+
+            const userRef = db.collection('users').doc(userId);
+            const userDoc = await userRef.get();
+
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                if (userData.lastCompletionDate !== todayStr) {
+                    const newStreak = userData.lastCompletionDate === yesterdayStr ? (userData.totalCompleted || 0) + 1 : 1;
+                    
+                    await userRef.update({
+                        totalCompleted: newStreak,
+                        lastCompletionDate: todayStr
+                    });
+
+                    const higherScoresSnapshot = await db.collection('users').where('totalCompleted', '>', newStreak).count().get();
+                    const newRank = higherScoresSnapshot.data().count + 1;
+
+                    responsePayload = {
+                        ...responsePayload,
+                        newStreak,
+                        newRank,
+                        username: userData.username,
+                    };
+                    
+                    leaderboardCache.del('leaderboard_daily');
+                }
+            }
+        }
+        
+        res.json(responsePayload);
+
+    } catch (error) {
+        console.error("Error in daily challenge:", error);
+        res.status(500).json({ error: "Failed to process daily challenge." });
     }
-
-    const useMock = false;
-    if (useMock) {
-      const mockChallengeResult = "Congratulations! You've completed today's challenge with your selected XI. Your team shows great potential for teamwork and strategy. Keep up the good work!";
-      return res.json({ challengeResult: mockChallengeResult });
-    }
-
-    // Use the new prompt builder
-    const prompt = buildDailyChallengePrompt(dailyChallenge, lineupText);
-
-    const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }],
-    });
-
-    const text = response.choices[0].message.content;
-    
-    // Send the AI's full response back to the client
-    res.json({ challengeResult: text });
-
-  } catch (error)
- {
-    console.error("Error in daily challenge:", error);
-    res.status(500).json({ error: "Failed to process daily challenge." });
-  }
 });
-// 🔼 END: UPDATED DAILY CHALLENGE ENDPOINT
 
-// Endpoint to Store Team Data
 app.post('/save-team', async (req, res) => {
   try {
     const { teamName, formation, lineup, userId } = req.body;
@@ -418,7 +488,6 @@ app.post('/save-team', async (req, res) => {
   }
 });
 
-// Endpoint to Get a User's Saved Team
 app.get('/get-team/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
@@ -436,7 +505,6 @@ app.get('/get-team/:userId', async (req, res) => {
   }
 });
 
-// Anonymous Authentication Endpoint
 app.post('/auth/anonymous', async (req, res) => {
   try {
     const uid = `anon-${Date.now()}`;
