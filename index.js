@@ -119,7 +119,7 @@ ${lineupText}
 
 Include famous players from ${tournamentType} (e.g. Zidane in 2000, Iniesta in 2012, etc.)
 
-Generate a realistic path for England through the tournament (group stage, knockout rounds, etc.), but don't make it the real historical accurate outcome.
+Generate a realistic path for England through the tournament (group stage, knockout rounds, etc.), but don't make it the real historical accurate outcome. Generate a tournament win at 25% probability.
 
 Provide match results, key moments, standout performers, and realistic scores.
 
@@ -460,8 +460,11 @@ app.post("/daily-challenge", rateLimiter, async (req, res) => {
         
         res.json(responsePayload);
 
-    } catch (error) {
-        console.error("Error in daily challenge:", error);
+  } catch (error) {
+        // MODIFICATION: Log the detailed error to your server console
+        console.error("Detailed error in /daily-challenge:", error);
+
+        // This is the generic response the user sees
         res.status(500).json({ error: "Failed to process daily challenge." });
     }
 });
