@@ -433,7 +433,7 @@ app.post("/daily-challenge", rateLimiter, async (req, res) => {
             const userRef = db.collection('users').doc(userId);
             const userDoc = await userRef.get();
 
-            if (userDoc.exists()) {
+if (userDoc.exists) { // <--- CORRECTED LINE
                 const userData = userDoc.data();
                 if (userData.lastCompletionDate !== todayStr) {
                     const newStreak = userData.lastCompletionDate === yesterdayStr ? (userData.totalCompleted || 0) + 1 : 1;
