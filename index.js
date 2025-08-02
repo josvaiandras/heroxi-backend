@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const { OpenAI } = require('openai');
 const admin = require('firebase-admin');
 const NodeCache = require('node-cache');
+const compression = require('compression');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -13,6 +14,8 @@ const port = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
+
+app.use(compression()); // 👈 AND ADD THIS LINE
 
 // Initialize cache with a 60-minute Time-To-Live (TTL) for items
 const leaderboardCache = new NodeCache({ stdTTL: 3600 });
@@ -151,7 +154,6 @@ If the score is 7 or above, mark the result as "Daily Challenge Passed". Keep yo
   `.trim();
 }
 
-
 // =================================================================
 // START: MODIFIED PAGINATED & CACHED LEADERBOARD ENDPOINTS
 // =================================================================
@@ -215,13 +217,11 @@ app.get('/leaderboards/h2h', async (req, res) => {
     const users = await fetchLeaderboardPage('h2h', limit, startAfter);
     leaderboardCache.set(cacheKey, users); // Store the page in the cache
     res.json(users);
-  } catch (error)
- {
+  } catch (error) {
     console.error('Error fetching H2H leaderboard:', error);
     res.status(500).json({ error: 'Failed to load leaderboard.' });
   }
 });
-
 
 // =================================================================
 // START: MODIFIED REAL-TIME STAT UPDATE ENDPOINTS
@@ -230,10 +230,14 @@ app.get('/leaderboards/h2h', async (req, res) => {
 // Helper function to clear all cache entries for a specific leaderboard
 function clearLeaderboardCache(type) {
   const prefix = `leaderboard_${type}_`;
-  const keysToDelete = leaderboardCache.keys().filter(k => k.startsWith(prefix));
+  const keysToDelete = leaderboardCache
+    .keys()
+    .filter((k) => k.startsWith(prefix));
   if (keysToDelete.length > 0) {
     leaderboardCache.del(keysToDelete);
-    console.log(`Invalidated ${keysToDelete.length} cache entries for ${type} leaderboard.`);
+    console.log(
+      `Invalidated ${keysToDelete.length} cache entries for ${type} leaderboard.`
+    );
   }
 }
 
@@ -271,7 +275,6 @@ app.post('/update-stats/win/:userId', async (req, res) => {
     res.status(500).json({ error: 'Failed to update win stats.' });
   }
 });
-
 
 // =================================================================
 // ALL OTHER ENDPOINTS
