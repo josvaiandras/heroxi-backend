@@ -5,7 +5,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const { OpenAI } = require('openai');
 const admin = require('firebase-admin');
-const NodeCache = require('node-cache'); // 👈 ADDED
+const NodeCache = require('node-cache');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -15,7 +15,7 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // Initialize cache with a 60-minute Time-To-Live (TTL) for items
-const leaderboardCache = new NodeCache({ stdTTL: 3600 }); // 👈 ADDED
+const leaderboardCache = new NodeCache({ stdTTL: 3600 });
 
 // Firebase Admin SDK Initialization
 let serviceAccount;
@@ -151,8 +151,9 @@ If the score is 7 or above, mark the result as "Daily Challenge Passed". Keep yo
   `.trim();
 }
 
+
 // =================================================================
-// START: NEW PAGINATED LEADERBOARD ENDPOINTS
+// START: MODIFIED PAGINATED & CACHED LEADERBOARD ENDPOINTS
 // =================================================================
 
 async function fetchLeaderboardPage(type, limit, startAfterUid) {
@@ -177,11 +178,20 @@ async function fetchLeaderboardPage(type, limit, startAfterUid) {
 }
 
 app.get('/leaderboards/daily', async (req, res) => {
-  const limit = parseInt(req.query.limit) || 3;
+  const limit = parseInt(req.query.limit) || 20;
   const startAfter = req.query.startAfter || null;
+  const cacheKey = `leaderboard_daily_${startAfter || 'firstPage'}`; // Dynamic cache key
 
   try {
+    const cachedUsers = leaderboardCache.get(cacheKey);
+    if (cachedUsers) {
+      console.log(`Serving daily leaderboard page from cache: ${cacheKey}`);
+      return res.json(cachedUsers);
+    }
+
+    console.log(`Fetching daily leaderboard page from Firestore: ${cacheKey}`);
     const users = await fetchLeaderboardPage('daily', limit, startAfter);
+    leaderboardCache.set(cacheKey, users); // Store the page in the cache
     res.json(users);
   } catch (error) {
     console.error('Error fetching daily leaderboard:', error);
@@ -192,19 +202,40 @@ app.get('/leaderboards/daily', async (req, res) => {
 app.get('/leaderboards/h2h', async (req, res) => {
   const limit = parseInt(req.query.limit) || 20;
   const startAfter = req.query.startAfter || null;
+  const cacheKey = `leaderboard_h2h_${startAfter || 'firstPage'}`; // Dynamic cache key
 
   try {
+    const cachedUsers = leaderboardCache.get(cacheKey);
+    if (cachedUsers) {
+      console.log(`Serving H2H leaderboard page from cache: ${cacheKey}`);
+      return res.json(cachedUsers);
+    }
+
+    console.log(`Fetching H2H leaderboard page from Firestore: ${cacheKey}`);
     const users = await fetchLeaderboardPage('h2h', limit, startAfter);
+    leaderboardCache.set(cacheKey, users); // Store the page in the cache
     res.json(users);
-  } catch (error) {
+  } catch (error)
+ {
     console.error('Error fetching H2H leaderboard:', error);
     res.status(500).json({ error: 'Failed to load leaderboard.' });
   }
 });
 
+
 // =================================================================
-// START: REAL-TIME STAT UPDATE ENDPOINTS
+// START: MODIFIED REAL-TIME STAT UPDATE ENDPOINTS
 // =================================================================
+
+// Helper function to clear all cache entries for a specific leaderboard
+function clearLeaderboardCache(type) {
+  const prefix = `leaderboard_${type}_`;
+  const keysToDelete = leaderboardCache.keys().filter(k => k.startsWith(prefix));
+  if (keysToDelete.length > 0) {
+    leaderboardCache.del(keysToDelete);
+    console.log(`Invalidated ${keysToDelete.length} cache entries for ${type} leaderboard.`);
+  }
+}
 
 app.post('/update-stats/win/:userId', async (req, res) => {
   const { userId } = req.params;
@@ -231,8 +262,8 @@ app.post('/update-stats/win/:userId', async (req, res) => {
       .get();
     const newRank = higherScoresSnapshot.data().count + 1;
 
-    // Note: Caching is removed as we are lazy loading directly from DB
-    // leaderboardCache.del('leaderboard_h2h');
+    // Invalidate all H2H leaderboard cache pages
+    clearLeaderboardCache('h2h');
 
     res.json({ newScore, newRank });
   } catch (error) {
@@ -240,6 +271,7 @@ app.post('/update-stats/win/:userId', async (req, res) => {
     res.status(500).json({ error: 'Failed to update win stats.' });
   }
 });
+
 
 // =================================================================
 // ALL OTHER ENDPOINTS
@@ -396,11 +428,9 @@ app.post('/simulate-match', rateLimiter, async (req, res) => {
       !matchData.formationA ||
       !matchData.formationB
     ) {
-      return res
-        .status(400)
-        .json({
-          error: 'Match is incomplete. Both teams and formations are required.',
-        });
+      return res.status(400).json({
+        error: 'Match is incomplete. Both teams and formations are required.',
+      });
     }
 
     const prompt = buildMatchSimulationPrompt(
@@ -435,7 +465,7 @@ app.post('/simulate-match', rateLimiter, async (req, res) => {
   }
 });
 
-// REPLACED Daily Challenge Endpoint
+// MODIFIED Daily Challenge Endpoint
 app.post('/daily-challenge', rateLimiter, async (req, res) => {
   try {
     const { lineupText, dailyChallenge } = req.body;
@@ -474,7 +504,6 @@ app.post('/daily-challenge', rateLimiter, async (req, res) => {
       const userDoc = await userRef.get();
 
       if (userDoc.exists) {
-        // <--- CORRECTED LINE
         const userData = userDoc.data();
         if (userData.lastCompletionDate !== todayStr) {
           const newStreak =
@@ -501,18 +530,15 @@ app.post('/daily-challenge', rateLimiter, async (req, res) => {
             username: userData.username,
           };
 
-          // Note: Caching is removed as we are lazy loading directly from DB
-          // leaderboardCache.del('leaderboard_daily');
+          // Invalidate all daily leaderboard cache pages
+          clearLeaderboardCache('daily');
         }
       }
     }
 
     res.json(responsePayload);
   } catch (error) {
-    // MODIFICATION: Log the detailed error to your server console
     console.error('Detailed error in /daily-challenge:', error);
-
-    // This is the generic response the user sees
     res.status(500).json({ error: 'Failed to process daily challenge.' });
   }
 });
@@ -521,11 +547,9 @@ app.post('/save-team', async (req, res) => {
   try {
     const { teamName, formation, lineup, userId } = req.body;
     if (!teamName || !formation || !lineup || !userId) {
-      return res
-        .status(400)
-        .json({
-          error: 'Team name, formation, lineup, and userId are required.',
-        });
+      return res.status(400).json({
+        error: 'Team name, formation, lineup, and userId are required.',
+      });
     }
 
     const teamRef = db.collection('teams').doc(userId);
