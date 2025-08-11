@@ -15,7 +15,7 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-app.use(compression()); // 👈 AND ADD THIS LINE
+app.use(compression());
 
 // Initialize cache with a 60-minute Time-To-Live (TTL) for items
 const leaderboardCache = new NodeCache({ stdTTL: 3600 });
