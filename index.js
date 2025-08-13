@@ -14,7 +14,6 @@ const port = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
-
 app.use(compression());
 
 // Initialize cache with a 60-minute Time-To-Live (TTL) for items
@@ -600,6 +599,45 @@ app.post('/auth/anonymous', async (req, res) => {
     res.status(500).json({ error: 'Failed to authenticate anonymously.' });
   }
 });
+
+// START: NEW USER STATS ENDPOINT
+app.get('/user-stats/:userId', async (req, res) => {
+  const { userId } = req.params;
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required.' });
+  }
+
+  try {
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const userData = userDoc.data();
+    const dailyScore = userData.totalCompleted || 0;
+
+    // Calculate Daily Challenge Rank efficiently on the server
+    const dailyRankSnapshot = await db
+      .collection('users')
+      .where('totalCompleted', '>', dailyScore)
+      .count()
+      .get();
+    const dailyRank = dailyRankSnapshot.data().count + 1;
+
+    res.json({
+      username: userData.username || 'N/A',
+      dailyStreak: dailyScore,
+      dailyRank: dailyRank,
+    });
+  } catch (error) {
+    console.error(`Error fetching stats for user ${userId}:`, error);
+    res.status(500).json({ error: 'Failed to fetch user stats.' });
+  }
+});
+// END: NEW USER STATS ENDPOINT
+
 
 // Start the Server
 app.listen(port, () => {
